@@ -27,36 +27,80 @@
   document.body.append(btn);
 
   async function myFunc() {
-    const t = await navigator.clipboard.readText();
-    const n = t.split("\n");
+    const table = document.querySelector('table[role="grid"]');
+    let headers = getHeaders(table);
+    let subs = getSubs(table);
+    let final = generateMD(headers, subs).join("\n");
+    navigator.clipboard.writeText(final);
+    console.log(final);
 
-    const reg1 = /^\d.*/;
-    if (n[0].toLowerCase().indexOf("course overview") === 0) {
-      const cleanList = n.reduce((rs, n) => {
-        let t = n.split("\t");
-        if (reg1.test(t[0]) || t[0] === "Clip Watched") {
-        } else rs.push(t[0]);
+    function generateMD(headers, subs) {
+      let final = [];
+      headers.forEach((h, i) => {
+        final.push(`# ${h}`);
+        subs[i].forEach((s) => {
+          final.push(`\t - ${s}`);
+        });
+      });
 
-        return rs;
-      }, []);
+      return final;
+    }
 
-      const t = document.querySelectorAll(".table-of-contents__title");
-      let idx = 0;
+    function getHeaders(table) {
+      let tr = document.evaluate(
+        './tbody/tr[not(@aria-hidden="true")]',
+        table,
+        null,
+        XPathResult.ANY_TYPE,
+        null
+      );
+      let headers = [];
+      let t = null;
+      while ((t = tr.iterateNext())) {
+        let text = trimText(t.innerText);
+        headers.push(text);
+      }
+      return headers;
+    }
 
-      const rs = cleanList.reduce((rs, n) => {
-        if (n === t[idx]?.innerText) {
-          idx++;
-          rs.push(`# ${n}`);
-        } else {
-          rs.push(`\t - ${n}`);
-        }
+    function getSubs(table) {
+      let tr = document.evaluate(
+        "./tbody/tr/td/div/div/table",
+        table,
+        null,
+        XPathResult.ANY_TYPE,
+        null
+      );
+      let subs = [];
+      let t = null;
+      while ((t = tr.iterateNext())) {
+        subs.push(getSubText(t));
+      }
+      return subs;
+    }
 
-        return rs;
-      }, []);
+    function getSubText(table) {
+      let tr = document.evaluate(
+        "./tbody/tr/td[1]",
+        table,
+        null,
+        XPathResult.ANY_TYPE,
+        null
+      );
+      let text = [];
+      let t = null;
+      while ((t = tr.iterateNext())) {
+        text.push(trimText(t.textContent));
+      }
+      return text;
+    }
 
-      const rs2 = rs.join("\n");
-      navigator.clipboard.writeText(rs2);
-      console.log(rs2);
+    function trimText(t) {
+      if (typeof t === "string") {
+        if (t.indexOf("\t") >= 0)
+          return t.split("\t")[1]?.trim().replace("#", "\\#");
+        return t.trim();
+      }
     }
   }
 })();
